@@ -11,7 +11,9 @@ LEVELS = [
 class Logger:
     def __init__(self, file_path: str):
         self.path = file_path
-        with open(self.path, 'w', encoding='utf-8') as initial:
+        file_name = str(datetime.datetime.now()).replace(".",'_').replace(" ",'_').replace("-",'_').replace(":","_") + ".log"
+        self.file = f'{self.path}\\{file_name}'
+        with open(self.file, 'w', encoding='utf-8') as initial:
             initial.write("[{}] LOGGING BEGUN  [{}] \n".format(
                 LEVELS[0], datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
 
@@ -24,21 +26,9 @@ class Logger:
         if not level in LEVELS:
             raise ValueError(
                 'Level must be either of the following options {}'.format(",".join(LEVELS)))
-        with open(self.path, 'a', encoding='utf-8') as logging:
+        with open(self.file, 'a', encoding='utf-8') as logging:
             time_now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            logging.write(f'[{level}]  {message}  [{time_now}]')
-
-
-def CreateConfig() -> None:
-    import datetime
-    import json
-    Obj = {
-        "created": True,
-        "time": str(datetime.datetime.now()),
-    }
-    converted = json.dumps(Obj)
-    with open('config.json', 'w', encoding='utf-8') as config:
-        config.write(converted)
+            logging.write(f'[{level}]  {message}  [{time_now}] \n')
 
 
 def main():

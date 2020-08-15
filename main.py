@@ -1,9 +1,28 @@
+"""
+    -----------------------------------------------
+    CURRENT SQL TABLE FORMAT :
+        platform UNIQUE NOT NULL
+        date_created integer NOT NULL
+        password text
+        username
+        email
+        name
+        first_name
+        last_name
+        full_name
+    -----------------------------------------------
+
+"""
+
 import sqlite3
 import os
 import logger
+import datetime
+import time
+from typing import Union
 
 connection = sqlite3.connect('psdb.db')
-logging = logger.Logger(f"{os.getcwd()}\\logs.log")
+logging = logger.Logger(os.path.join(os.getcwd(),"logs"))
 
 LEVELS = [
     'INFO',
@@ -13,12 +32,17 @@ LEVELS = [
 
 NULL = None
 
+
+def mapFunc(args,len_args):
+    return f'{args.upper()} : {len_args} CHARACTERS'
+
 class Database:
     def __init__(self):
         try:
             connection.execute('''
                 CREATE TABLE DATA (
                     platform text NOT NULL UNIQUE,
+                    date_created integer NOT NULL, 
                     password text,
                     username text NULL,
                     email text NULL,
@@ -31,26 +55,39 @@ class Database:
             logging.log(LEVELS[0],"CREATED DATABASE")
             connection.commit()
         except sqlite3.OperationalError:
-            print("Detected local database at {}".format(os.getcwd()))
+            print("[INFO] Detected local database at {}".format(os.getcwd()))
 
-    def add(self,platform,password,username=NULL,email=NULL,name=NULL,first_name=NULL,last_name=NULL,full_name=NULL):
-        connection.execute(
-            """
-            INSERT INTO DATA VALUES (:platform,:password,:username,:email,:name,:first_name,:last_name,:full_name)
-        """,{
-            "platform" : platform,
-            "username" : username,
-            "password" : password,
-            "email" : email,
-            "name" : name,
-            "first_name" : first_name,
-            "last_name" : last_name,
-            "full_name" : full_name
-        })
-        logging.log(LEVELS[0],"INSERTED {}".format(platform))
-        connection.commit()
+    def add(self,platform : str,password : str,username : Union[str,bool] = NULL,email : Union[str,bool] = NULL,name : Union[str,bool] = NULL,first_name : Union[str,bool] = NULL,last_name : Union[str,bool] = NULL,full_name : Union[str,bool]=NULL):
+        try:
+            connection.execute(
+                """
+                INSERT INTO DATA VALUES (:platform,:password,:username,:email,:name,:first_name,:last_name,:full_name)
+            """,{
+                "platform" : platform,
+                "username" : username,
+                "password" : password,
+                "email" : email,
+                "name" : name,
+                "first_name" : first_name,
+                "last_name" : last_name,
+                "full_name" : full_name
+            })
+            logging.log(LEVELS[0],"INSERTED {}".format(platform))
+            connection.commit()
+            return False
+        except sqlite3.IntegrityError:
+            logging.log(LEVELS[2],"FAILED TO INSERT {} (sqlite3.IntegrityError)".format(platform))
+            return f'[ERROR] Platform {platform} has already been declared!'
 
-    def delete(self,platform):
+    def delete(self,platform :str):
+        f = connection.execute(
+            'SELECT * FROM DATA where platform = ?',(platform,)
+        )
+        __all__ = f.fetchall()
+        if not len(__all__) > 0:
+            logging.log(LEVELS[2],"FAILED TO DELETE {} (NO RESULTS)".format(platform))
+            return f'[ERROR] Query came up with no results, and thus makeing deletion not feasible.'
+
         connection.execute(
             """
             DELETE FROM DATA WHERE platform = ?
@@ -58,14 +95,107 @@ class Database:
         ,(platform,))
         logging.log(LEVELS[1],"DELETED {}".format(platform))
         connection.commit()
+        return f'[{LEVELS[1]}] Deleted ALL on platform {platform}'
 
-    def view(self,platform):
-        connection.execute("""
+
+    def quickQuery(self):
+        """
+            Returns the first collumn (platform UNIQUE NOT NULL) of all rows
+        """
+        data = connection.execute(
+            """
             SELECT platform FROM DATA
-        """)
+            """
+        )
+        return [platform[0] for platform in data.fetchall()]
 
+    def SpecificView(self,platform : str) -> str:
+        """
+            Given a string input it querys the DATA table to see if there is any row such that:
+            => input == platform
+        """
+
+        t_0 = time.time()
+        queryset = connection.execute("""
+            SELECT * FROM DATA WHERE platform = ?
+        """,(platform,))
+
+        result = queryset.fetchall()
+        if len(result) == 0:
+            logging.log(LEVELS[2],"QUERY FOR '{}' returned no results".format(platform,TIME_DIFFERENCE)) 
+            return '[INFO] No results for the platform "{}".'.format(platform) 
+        result = result[0]
+        username = result[2]
+        email = result[3]
+        name = result[4]
+        first_name = result[5]
+        last_name = result[6]
+        full_name = result[7]      
+        u1 = f' USERNAME : {username}'
+        e1 = f' EMAIL : {email}'
+        n1 = f' NAME : {name}'
+        f1 = f' FIRST NAME : {first_name}'
+        l1 = f' LAST NAME : {last_name}'
+        fu1 = f' FULL NAME : {full_name}'
+        EMPTY = ''
+        TIME = datetime.datetime.now().strftime("%Y-%m-%d | %H:%M:%S")
+        t_1 = time.time()
+        TIME_DIFFERENCE = t_1 - t_0
+        res = f"""
+        -----------------------------------------------------
+                PLATFORM : {result[0]}
+                PASSWORD : {result[1]}
+               {u1 if username is not None else EMPTY}
+               {e1 if email is not None else EMPTY}
+               {n1 if name is not None else EMPTY}
+               {f1 if first_name is not None else EMPTY}
+               {l1 if last_name is not None else EMPTY}
+               {fu1 if full_name is not None else EMPTY}
+
+            Succesfully ended query - {TIME}    
+        -----------------------------------------------------
+        """.split("\n")
+        res = [item for item in res if item.strip() !='']
+        res[-2] = f'\n {res[-2]}' 
+        logging.log(LEVELS[0],"QUERY FOR '{}' finished in {}".format(platform,TIME_DIFFERENCE))
+        return "\n".join(res)
+
+    def GeneralView(self):
+        t_0 = time.time()
+        length = connection.execute(
+            """
+            SELECT COUNT(platform) FROM DATA
+            """
+        )
+        length = length.fetchall()[0][0]
+        data = connection.execute(
+            """
+            SELECT platform,LENGTH(password) FROM DATA
+            """
+        )
+        data = data.fetchall()
+        INFO = [length,[(info[0],info[1]) for info in data]]
+        #wtf
+        VISUAL_DATA = [f'             {item[0].upper()} : {item[1]} CHARACTERS' for item in INFO[1]]
+        t_1 = time.time()
+        HEAD = f"""
+        -----------------------------------------------------
+            TOTAL NUMBER OF ROWS IN DATABASE : {INFO[0]}
+        """
+        LIST = [HEAD]
+        for item in VISUAL_DATA:
+            LIST.append(item)
+        TIME = datetime.datetime.now().strftime("%Y-%m-%d | %H:%M:%S")
+        TIME_DIFFERENCE = t_1 - t_0
+        BOTTOM = f"""
+        Succesfully ended query in {TIME_DIFFERENCE}s - {TIME} 
+        -----------------------------------------------------   
+        """
+        LIST.append(BOTTOM)
+        logging.log(LEVELS[0],"QUERY FOR * finished in {}".format(TIME_DIFFERENCE))
+        return "\n".join(LIST)
+        
 
 
 localhost = Database()
-localhost.add("Twitter","peos")
-
+print(localhost.delete("Twitter"))
