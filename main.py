@@ -35,10 +35,6 @@ LEVELS = [
 
 NULL = None
 
-
-def mapFunc(args,len_args):
-    return f'{args.upper()} : {len_args} CHARACTERS'
-
 class Database:
     def __init__(self):
         try:
