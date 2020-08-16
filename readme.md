@@ -98,3 +98,4 @@ class Database:
 ![](https://i.imgur.com/z6j1fVN.png)
 
 - Uses [`colorama.py`](https://pypi.org/project/colorama/) for terminal colors
+
