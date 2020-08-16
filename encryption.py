@@ -1,3 +1,9 @@
+"""
+    LOCAL MODULE FOR PASSWORD ENCRYPTION,
+    USES PYTHON'S BUILTIN FUNCTIONS AS WELL AS THE SECRETS MODULE,
+"""
+
+
 import secrets 
 from typing import Union
 import getpass
@@ -117,5 +123,6 @@ def decrpyt(encrypted_msg : str,encrypted_iterations : str,charvar_length : str)
 
 
 if __name__ == "__main__":
-    x = encrypt("!important")
+    x = encrypt("Terry Davis is the smartest programmer that has ever lived.")
+    print(x)
     print(decrpyt(x[0],x[1][0],x[1][1]))
