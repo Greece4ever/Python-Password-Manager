@@ -22,6 +22,9 @@ import time
 from typing import Union
 
 connection = sqlite3.connect('psdb.db')
+connection.set_trace_callback(print)
+
+
 logging = logger.Logger(os.path.join(os.getcwd(),"logs"))
 
 LEVELS = [
@@ -53,6 +56,7 @@ class Database:
                 );
             ''')
             logging.log(LEVELS[0],"CREATED DATABASE")
+            print("[INFO] CREATED DATABASE [{}]".format(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
             connection.commit()
         except sqlite3.OperationalError:
             print("[INFO] Detected local database at {}".format(os.getcwd()))
@@ -77,7 +81,7 @@ class Database:
             return False
         except sqlite3.IntegrityError:
             logging.log(LEVELS[2],"FAILED TO INSERT {} (sqlite3.IntegrityError)".format(platform))
-            return f'[ERROR] Platform {platform} has already been declared!'
+            return f'[{LEVELS[-1]}] Platform {platform} has already been declared!'
 
     def delete(self,platform :str):
         f = connection.execute(
@@ -96,7 +100,6 @@ class Database:
         logging.log(LEVELS[1],"DELETED {}".format(platform))
         connection.commit()
         return f'[{LEVELS[1]}] Deleted ALL on platform {platform}'
-
 
     def quickQuery(self):
         """
@@ -160,7 +163,7 @@ class Database:
         logging.log(LEVELS[0],"QUERY FOR '{}' finished in {}".format(platform,TIME_DIFFERENCE))
         return "\n".join(res)
 
-    def GeneralView(self):
+    def GeneralView(self) -> str:
         t_0 = time.time()
         length = connection.execute(
             """
@@ -194,8 +197,41 @@ class Database:
         LIST.append(BOTTOM)
         logging.log(LEVELS[0],"QUERY FOR * finished in {}".format(TIME_DIFFERENCE))
         return "\n".join(LIST)
-        
+    
+    def Update(self,platform : str,updated) -> str:
+        #See if data exists
+        RESP = connection.execute(
+            """
+            SELECT COUNT(platform) FROM DATA
+            WHERE platform = ?
+            """
+        ,(platform,))
+        if not int(RESP.fetchall()[0][0]) > 0:
+            msg = f'Specified row "{platform}" could not be found.'
+            logging.log(LEVELS[2],msg)
+            return f'[{LEVELS[2]}] {msg}'
+
+        connection.execute(
+            """
+            UPDATE DATA
+            SET  password = :password,username = :username,email = :email,name = :name,first_name = :first_name,last_name = :last_name, full_name = :full_name
+            WHERE platform = :platform
+            """
+        ,{
+            "platform" : platform,
+            "password" : updated['password'] if 'password' in updated else "password",
+            "username" : updated['username'] if 'username' in updated else "username",
+            "email" : updated['email'] if 'email' in updated else "email",
+            "name" : updated['name'] if 'name' in updated else "name",
+            "first_name" : updated['first_name'] if 'first_name' in updated else "first_name",
+            "last_name" : updated['last_name'] if 'last_name' in updated else "last_name",
+            "full_name" : updated['full_name'] if 'full_name' in updated else "full_name",
+        })     
+        connection.commit()
+        msg = f'Successfully updated row {platform} .'
+        logging.log(LEVELS[0],msg)
+        return f'[INFO] {msg}'
 
 
 localhost = Database()
-print(localhost.delete("Twitter"))
+print(localhost.Update("Facebook",{"username" : "pakis"}))
