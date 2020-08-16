@@ -61,6 +61,9 @@ class Database:
         except sqlite3.OperationalError:
             print("[INFO] Detected local database at {}".format(os.getcwd()))
 
+    def __str__(self):
+        return f'Local sqlite3 db at path {self.path}'
+
     def add(self,platform : str,password : str,username : Union[str,bool] = NULL,email : Union[str,bool] = NULL,name : Union[str,bool] = NULL,first_name : Union[str,bool] = NULL,last_name : Union[str,bool] = NULL,full_name : Union[str,bool]=NULL):
         try:
             connection.execute(
@@ -198,18 +201,49 @@ class Database:
         logging.log(LEVELS[0],"QUERY FOR * finished in {}".format(TIME_DIFFERENCE))
         return "\n".join(LIST)
     
-    def Update(self,platform : str,updated) -> str:
-        #See if data exists
+    def Update(self,platform : str,updated : dict) -> str:
+        """
+        => Method that updates all specifeid collumns of  a single row
+        => You pass in a string platform : The UNIQUE NOT NULL collumn
+        => You pass in a dict updated : specifying what you want to update
+        Example :
+                    {
+                        'username' : 'Elon',
+                        'password' : 'mars'
+                    }
+
+            I cannot just select the rows I want from user input
+            so I have to make 2 querys getting all the data
+            and if something is blank, setting it the the fecthed
+            data from the first query
+        """
+
+
+        #Make query to get length of data and the data in case a field is blank
         RESP = connection.execute(
             """
-            SELECT COUNT(platform) FROM DATA
+            SELECT * FROM DATA
             WHERE platform = ?
             """
         ,(platform,))
-        if not int(RESP.fetchall()[0][0]) > 0:
+
+        RESP = RESP.fetchall()
+
+        if not len(RESP) > 0:
             msg = f'Specified row "{platform}" could not be found.'
             logging.log(LEVELS[2],msg)
             return f'[{LEVELS[2]}] {msg}'
+
+        RESP = RESP[0]
+        BEFORE = {
+            "password" : RESP[1],
+            "username" : RESP[2],
+            "email" : RESP[3],
+            "name" : RESP[4],
+            "first_name" : RESP[5],
+            "last_name" : RESP[6],
+            "full_name" : RESP[7] 
+        }
 
         connection.execute(
             """
@@ -219,19 +253,21 @@ class Database:
             """
         ,{
             "platform" : platform,
-            "password" : updated['password'] if 'password' in updated else "password",
-            "username" : updated['username'] if 'username' in updated else "username",
-            "email" : updated['email'] if 'email' in updated else "email",
-            "name" : updated['name'] if 'name' in updated else "name",
-            "first_name" : updated['first_name'] if 'first_name' in updated else "first_name",
-            "last_name" : updated['last_name'] if 'last_name' in updated else "last_name",
-            "full_name" : updated['full_name'] if 'full_name' in updated else "full_name",
+            "password" : updated['password'] if 'password' in updated else BEFORE["password"],
+            "username" : updated['username'] if 'username' in updated else BEFORE["username"],
+            "email" : updated['email'] if 'email' in updated else BEFORE["email"],
+            "name" : updated['name'] if 'name' in updated else BEFORE["name"],
+            "first_name" : updated['first_name'] if 'first_name' in updated else BEFORE["first_name"],
+            "last_name" : updated['last_name'] if 'last_name' in updated else BEFORE["last_name"],
+            "full_name" : updated['full_name'] if 'full_name' in updated else BEFORE["full_name"],
         })     
+
         connection.commit()
-        msg = f'Successfully updated row {platform} .'
+        data = "".join([f'{item.upper()}' for item in updated])
+        msg = f'Successfully updated rows for platofrm {RESP[0]} : {data} .'
         logging.log(LEVELS[0],msg)
         return f'[INFO] {msg}'
 
 
 localhost = Database()
-print(localhost.Update("Facebook",{"username" : "pakis"}))
+print(localhost.Update("Instagram",{"full_name" : 'SSL'}))
