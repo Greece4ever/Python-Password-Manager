@@ -22,7 +22,7 @@ import time
 from typing import Union
 
 connection = sqlite3.connect('psdb.db')
-connection.set_trace_callback(print)
+# connection.set_trace_callback(print)
 
 
 logging = logger.Logger(os.path.join(os.getcwd(),"logs"))
@@ -81,9 +81,10 @@ class Database:
             })
             logging.log(LEVELS[0],"INSERTED {}".format(platform))
             connection.commit()
-            return False
+            logging.log(LEVELS[0],"INSERTED ROW {}".format(platform))
+            return f'[INFO] Successfully added inserted row {platform}.'
         except sqlite3.IntegrityError:
-            logging.log(LEVELS[2],"FAILED TO INSERT {} (sqlite3.IntegrityError)".format(platform))
+            logging.log(LEVELS[2],"FAILED TO INSERT {} (ALREADY EXISTS)".format(platform))
             return f'[{LEVELS[-1]}] Platform {platform} has already been declared!'
 
     def delete(self,platform :str):
@@ -127,9 +128,31 @@ class Database:
         """,(platform,))
 
         result = queryset.fetchall()
-        if len(result) == 0:
-            logging.log(LEVELS[2],"QUERY FOR '{}' returned no results".format(platform,TIME_DIFFERENCE)) 
-            return '[INFO] No results for the platform "{}".'.format(platform) 
+        if not len(result) > 0:
+            logging.log(LEVELS[2],"QUERY FOR '{}' returned no results".format(platform,)) 
+            logging.log(LEVELS[0],"EXECUTING CASE INSENSITIVE-LIKE QUERY FOR {}".format(platform,)) 
+            queryset = connection.execute(
+                """
+                    SELECT * FROM DATA WHERE UPPER(platform) like UPPER(?)
+                """,[f'%{platform}%']
+            )
+            result = queryset.fetchall()
+            length = len(result)
+            if not length > 0:
+                return '[ERROR] No results for the platform "{}".'.format(platform) 
+            else:
+                DATA = {}
+                INFO = []
+                print("There were {} results".format(length))
+                for index,item in enumerate(result):
+                    DATA[index+1] = item
+                    INFO.append(f'{index+1} - {item[0]}')
+                print("\n".join(INFO))
+                print("Select by specifying the corresponding number")
+                num = input()
+                return self.SpecificView(DATA[int(num)][0])
+
+
         result = result[0]
         username = result[2]
         email = result[3]
@@ -150,9 +173,9 @@ class Database:
         res = f"""
         -----------------------------------------------------
                 PLATFORM : {result[0]}
-                PASSWORD : {result[1]}
                {u1 if username is not None else EMPTY}
                {e1 if email is not None else EMPTY}
+                PASSWORD : {result[1]}      
                {n1 if name is not None else EMPTY}
                {f1 if first_name is not None else EMPTY}
                {l1 if last_name is not None else EMPTY}
@@ -270,4 +293,6 @@ class Database:
 
 
 localhost = Database()
-print(localhost.Update("Instagram",{"full_name" : 'SSL'}))
+print(localhost.add("Youtube","chanlder","MrBeast"))
+print(localhost.add("YouPorn","arab","MiaKhalifa"))
+print(localhost.SpecificView("you"))
