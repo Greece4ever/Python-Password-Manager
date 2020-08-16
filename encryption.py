@@ -125,4 +125,7 @@ def decrpyt(encrypted_msg : str,encrypted_iterations : str,charvar_length : str)
 if __name__ == "__main__":
     x = encrypt("Terry Davis is the smartest programmer that has ever lived.")
     print(x)
+    print("\n\n")
+    print(encryptIterations(223456))
+    print("\n\n")
     print(decrpyt(x[0],x[1][0],x[1][1]))

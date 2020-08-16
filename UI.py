@@ -114,7 +114,6 @@ print(f"{white}<---------------------- PYTHON PASSWORD MANAGER v0.0.1 ----------
 print("\n")
 print(f" {white}< ------- DETAILS  ------- >{reset}\n")
 print(" |     {}CREATOR {}:  {} ".format(blue,reset,creator))
-print(" |     {}LINES {}:  {} ".format(blue,reset,LINES))
 print(" |     {}VERSION {}:  {} ".format(blue,reset,VERSION))
 print(" |     {}ENCYPTION {}:  {} ".format(blue,reset,encryption))
 print(" |     {}LOGGING {}:  {} ".format(blue,reset,logging))
